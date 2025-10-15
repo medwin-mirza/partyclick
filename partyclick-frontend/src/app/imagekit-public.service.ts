@@ -26,10 +26,23 @@ export class ImageKitService {
     }
   }
 
-  async uploadMultiplePhotos(photos: string[]): Promise<string[]> {
+  async uploadMultiplePhotos(photos: string[], guestName: string = 'guest'): Promise<string[]> {
     const uploadPromises = photos.map((photo, index) => {
       if (photo) {
-        const fileName = `guest-photo-${Date.now()}-${index}.jpg`;
+        // Clean guest name for filename (remove spaces and special characters)
+        const cleanName = guestName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        
+        // Create short date format (YYYYMMDD-HHMMSS)
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const shortDate = `${year}${month}${day}-${hours}${minutes}${seconds}`;
+        
+        const fileName = `${cleanName}-${shortDate}.jpg`;
         return this.uploadPhoto(photo, fileName);
       }
       return Promise.resolve('');

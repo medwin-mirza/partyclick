@@ -8,6 +8,17 @@
       Upload 4 crazy fun clicks that you take in the event
     </p>
     
+    <!-- Name Input Field -->
+    <div class="name-section">
+      <input 
+        type="text" 
+        class="name-input" 
+        placeholder="Enter your name" 
+        [(ngModel)]="guestName"
+        (input)="onNameChange()"
+        maxlength="50">
+    </div>
+    
     <div class="upload-boxes">
       <div class="upload-box" *ngFor="let box of uploadBoxes; let i = index" (click)="openCamera(i)">
         <!-- Show captured photo if available -->
@@ -35,8 +46,9 @@
     
     <!-- Upload Button -->
     <div class="upload-section">
-      <button class="upload-btn" (click)="openConfirmModal()" [disabled]="!hasPhotos || isUploading">
-        <span *ngIf="!isUploading">Upload {{ photoCount }} Photo{{ photoCount !== 1 ? 's' : '' }}</span>
+      <button class="upload-btn" (click)="openConfirmModal()" [disabled]="!canUpload || isUploading">
+        <span *ngIf="!isUploading && canUpload">Upload {{ photoCount }} Photo{{ photoCount !== 1 ? 's' : '' }}</span>
+        <span *ngIf="!isUploading && !canUpload">Upload</span>
         <span *ngIf="isUploading">Uploading...</span>
       </button>
     </div>

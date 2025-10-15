@@ -1,17 +1,19 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ImageKitService } from './imagekit-public.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
 export class AppComponent {
   uploadBoxes = Array(4).fill(0);
   capturedPhotos: string[] = Array(4).fill('');
+  guestName: string = '';
   showCameraModal = false;
   showConfirmModal = false;
   showSuccessModal = false;
@@ -23,6 +25,11 @@ export class AppComponent {
   uploadProgress = 0;
 
   constructor(private imagekitService: ImageKitService) {}
+
+  onNameChange() {
+    // Trim whitespace and update guest name
+    this.guestName = this.guestName.trim();
+  }
 
   async openCamera(boxIndex: number) {
     this.currentBoxIndex = boxIndex;
@@ -101,11 +108,19 @@ export class AppComponent {
 
   openConfirmModal() {
     const hasPhotos = this.capturedPhotos.some(photo => photo !== '');
-    if (hasPhotos) {
-      this.showConfirmModal = true;
-    } else {
-      alert('Please take at least one photo before uploading.');
+    const hasName = this.guestName.trim().length > 0;
+    
+    if (!hasName) {
+      alert('Please enter your name before uploading photos.');
+      return;
     }
+    
+    if (!hasPhotos) {
+      alert('Please take at least one photo before uploading.');
+      return;
+    }
+    
+    this.showConfirmModal = true;
   }
 
   closeConfirmModal() {
@@ -127,7 +142,7 @@ export class AppComponent {
         }
       }, 200);
 
-      const downloadURLs = await this.imagekitService.uploadMultiplePhotos(photosToUpload);
+      const downloadURLs = await this.imagekitService.uploadMultiplePhotos(photosToUpload, this.guestName.trim());
       
       clearInterval(progressInterval);
       this.uploadProgress = 100;
@@ -155,6 +170,14 @@ export class AppComponent {
 
   get hasPhotos() {
     return this.capturedPhotos.some(photo => photo !== '');
+  }
+
+  get hasName() {
+    return this.guestName.trim().length > 0;
+  }
+
+  get canUpload() {
+    return this.hasPhotos && this.hasName;
   }
 
   get photoCount() {
