@@ -25,6 +25,9 @@ export class AppComponent {
   stream: MediaStream | null = null;
   isUploading = false;
   uploadProgress = 0;
+  availableCameras: MediaDeviceInfo[] = [];
+  currentCameraIndex = 0;
+  isSwitchingCamera = false;
 
   constructor(private imagekitService: ImageKitService) {}
 
@@ -47,50 +50,101 @@ export class AppComponent {
     this.showToast = false;
   }
 
+  async detectAvailableCameras() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      this.availableCameras = devices.filter(device => device.kind === 'videoinput');
+      console.log('Available cameras:', this.availableCameras.length);
+    } catch (error) {
+      console.error('Error detecting cameras:', error);
+      this.availableCameras = [];
+    }
+  }
+
+  get hasMultipleCameras(): boolean {
+    return this.availableCameras.length > 1;
+  }
+
   async openCamera(boxIndex: number) {
     this.currentBoxIndex = boxIndex;
     this.showCameraModal = true;
     
+    // Detect available cameras first
+    await this.detectAvailableCameras();
+    
     try {
-      // Try high-quality settings first
-      let constraints: MediaStreamConstraints = { 
-        video: { 
-          facingMode: 'environment', // Use back camera on mobile
-          width: { ideal: 1920, min: 1280 },
-          height: { ideal: 1080, min: 720 },
-          frameRate: { ideal: 30, min: 15 }
-        } 
-      };
-
-      try {
-        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (highQualityError) {
-        console.warn('High quality settings failed, trying fallback:', highQualityError);
-        // Fallback to lower quality if high quality fails
-        constraints = { 
-          video: { 
-            facingMode: 'environment',
-            width: { ideal: 1280, min: 640 },
-            height: { ideal: 720, min: 480 }
-          } 
-        };
-        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-      }
-      
-      // Wait for the modal to be rendered
-      setTimeout(() => {
-        this.videoElement = document.getElementById('camera-video') as HTMLVideoElement;
-        this.canvasElement = document.getElementById('camera-canvas') as HTMLCanvasElement;
-        
-        if (this.videoElement && this.stream) {
-          this.videoElement.srcObject = this.stream;
-          this.videoElement.play();
-        }
-      }, 100);
+      await this.startCamera();
     } catch (error) {
       console.error('Error accessing camera:', error);
       alert('Unable to access camera. Please check permissions.');
       this.closeCamera();
+    }
+  }
+
+  async startCamera() {
+    // Stop existing stream
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+    }
+
+    const currentCamera = this.availableCameras[this.currentCameraIndex];
+    
+    // Try high-quality settings first
+    let constraints: MediaStreamConstraints = { 
+      video: { 
+        deviceId: currentCamera ? { exact: currentCamera.deviceId } : undefined,
+        facingMode: !currentCamera ? 'environment' : undefined, // Use back camera on mobile if no specific device
+        width: { ideal: 1920, min: 1280 },
+        height: { ideal: 1080, min: 720 },
+        frameRate: { ideal: 30, min: 15 }
+      } 
+    };
+
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (highQualityError) {
+      console.warn('High quality settings failed, trying fallback:', highQualityError);
+      // Fallback to lower quality if high quality fails
+      constraints = { 
+        video: { 
+          deviceId: currentCamera ? { exact: currentCamera.deviceId } : undefined,
+          facingMode: !currentCamera ? 'environment' : undefined,
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 }
+        } 
+      };
+      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+    }
+    
+    // Wait for the modal to be rendered
+    setTimeout(() => {
+      this.videoElement = document.getElementById('camera-video') as HTMLVideoElement;
+      this.canvasElement = document.getElementById('camera-canvas') as HTMLCanvasElement;
+      
+      if (this.videoElement && this.stream) {
+        this.videoElement.srcObject = this.stream;
+        this.videoElement.play();
+      }
+    }, 100);
+  }
+
+  async toggleCamera() {
+    if (this.availableCameras.length <= 1) return;
+    
+    this.isSwitchingCamera = true;
+    
+    // Switch to next camera
+    this.currentCameraIndex = (this.currentCameraIndex + 1) % this.availableCameras.length;
+    
+    try {
+      await this.startCamera();
+    } catch (error) {
+      console.error('Error switching camera:', error);
+      // Revert to previous camera if switching fails
+      this.currentCameraIndex = (this.currentCameraIndex - 1 + this.availableCameras.length) % this.availableCameras.length;
+      await this.startCamera();
+    } finally {
+      this.isSwitchingCamera = false;
     }
   }
 
@@ -124,6 +178,7 @@ export class AppComponent {
   closeCamera() {
     this.showCameraModal = false;
     this.currentBoxIndex = -1;
+    this.isSwitchingCamera = false;
     
     // Stop the camera stream
     if (this.stream) {
@@ -136,6 +191,9 @@ export class AppComponent {
       this.videoElement.srcObject = null;
       this.videoElement = null;
     }
+    
+    // Reset camera state
+    this.currentCameraIndex = 0;
   }
 
   retakePhoto(boxIndex: number) {
