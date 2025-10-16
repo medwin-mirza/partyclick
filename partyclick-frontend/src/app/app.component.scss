@@ -388,12 +388,29 @@
   right: 0;
   padding: 30px;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  gap: 20px;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(10px);
   z-index: 10;
+}
+
+.camera-controls-left {
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.camera-controls-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.camera-controls-right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .capture-btn {
@@ -534,6 +551,8 @@
 
 .upload-section {
   margin-top: 30px;
+  margin-bottom: 30px;
+  padding-bottom: 30px;
 }
 
 /* Mobile responsive toast */
@@ -558,6 +577,8 @@
 
 .upload-section {
   margin-top: 30px;
+  margin-bottom: 30px;
+  padding-bottom: 30px;
 }
 
 .upload-btn {
@@ -687,19 +708,20 @@
   background: #0056b3;
 }
 
-/* Progress Modal Styles */
-.progress-modal {
+/* Fun Loading Screen Styles */
+.fun-loading-modal {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1002;
-  padding: 20px;
+  overflow: hidden;
 }
 
 .progress-container {
@@ -750,6 +772,190 @@
   font-size: 1rem;
   color: #666;
   margin: 0;
+}
+
+.loading-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 40px;
+}
+
+.loading-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.floating-hearts {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.heart {
+  position: absolute;
+  font-size: 2rem;
+  animation: floatUp 4s ease-in-out infinite;
+  opacity: 0.7;
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(100vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  90% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-100px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.jumping-text-container {
+  text-align: center;
+  margin-bottom: 60px;
+  z-index: 10;
+}
+
+.jumping-text {
+  font-family: 'Dancing Script', 'Brush Script MT', cursive;
+  font-size: 4rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+}
+
+.jump-letter {
+  display: inline-block;
+  animation: jumpLetter 1.5s ease-in-out infinite;
+}
+
+@keyframes jumpLetter {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) scale(1.1);
+  }
+}
+
+.loading-subtitle {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 20px 0 0 0;
+  font-weight: 500;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.fun-progress-section {
+  width: 100%;
+  max-width: 500px;
+  z-index: 10;
+}
+
+.progress-container-fun {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 25px;
+  padding: 25px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 30px;
+}
+
+.progress-bar-fun {
+  width: 100%;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 15px;
+}
+
+.progress-fill-fun {
+  height: 100%;
+  background: linear-gradient(90deg, #FFD700, #FF6B6B, #4ECDC4);
+  border-radius: 6px;
+  transition: width 0.5s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-sparkles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.sparkle {
+  font-size: 1rem;
+  animation: sparkle 1s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.progress-percentage {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.loading-messages {
+  text-align: center;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-message {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+  font-weight: 500;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.5s ease;
+  position: absolute;
+}
+
+.loading-message.active {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Success Modal Styles */
@@ -824,8 +1030,34 @@
 
 /* Mobile responsive adjustments for modals */
 @media (max-width: 480px) {
-  .confirm-modal, .progress-modal, .success-modal {
+  .confirm-modal, .progress-modal, .success-modal, .fun-loading-modal {
     padding: 10px;
+  }
+
+  .jumping-text {
+    font-size: 2.5rem;
+    gap: 2px;
+  }
+
+  .loading-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .progress-container-fun {
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+
+  .progress-percentage {
+    font-size: 1.2rem;
+  }
+
+  .loading-message {
+    font-size: 0.9rem;
+  }
+
+  .heart {
+    font-size: 1.2rem;
   }
 
   .confirm-container, .progress-container, .success-container {

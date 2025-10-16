@@ -90,23 +90,31 @@
     </div>
     
     <div class="camera-controls">
-      <button 
-        class="camera-toggle-btn" 
-        (click)="toggleCamera()" 
-        *ngIf="hasMultipleCameras"
-        [disabled]="isSwitchingCamera">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M20 4H16.83L15 2H9L7.17 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM20 18H4V6H7.17L9 4H15L16.83 6H20V18Z" fill="currentColor"/>
-          <path d="M12 7C9.24 7 7 9.24 7 12S9.24 17 12 17 17 14.76 17 12 14.76 7 12 7ZM12 15C10.34 15 9 13.66 9 12S10.34 9 12 9 15 10.34 15 12 13.66 15 12 15Z" fill="currentColor"/>
-        </svg>
-      </button>
+      <div class="camera-controls-left">
+        <!-- Empty space for left alignment -->
+      </div>
       
-      <button class="capture-btn" (click)="capturePhoto()">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-          <circle cx="12" cy="12" r="3" fill="currentColor"/>
-        </svg>
-      </button>
+      <div class="camera-controls-center">
+        <button class="capture-btn" (click)="capturePhoto()">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <circle cx="12" cy="12" r="3" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="camera-controls-right">
+        <button 
+          class="camera-toggle-btn" 
+          (click)="toggleCamera()" 
+          *ngIf="hasMultipleCameras"
+          [disabled]="isSwitchingCamera">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 4H16.83L15 2H9L7.17 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM20 18H4V6H7.17L9 4H15L16.83 6H20V18Z" fill="currentColor"/>
+            <path d="M12 7C9.24 7 7 9.24 7 12S9.24 17 12 17 17 14.76 17 12 14.76 7 12 7ZM12 15C10.34 15 9 13.66 9 12S10.34 9 12 9 15 10.34 15 12 13.66 15 12 15Z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -132,18 +140,48 @@
   </div>
 </div>
 
-<!-- Upload Progress Modal -->
-<div class="progress-modal" *ngIf="isUploading">
-  <div class="progress-container">
-    <div class="progress-header">
-      <h3>Uploading Photos</h3>
+<!-- Fun Loading Screen -->
+<div class="fun-loading-modal" *ngIf="isUploading" (click)="$event.stopPropagation()">
+  <div class="loading-container">
+    <!-- Animated Background -->
+    <div class="loading-background">
+      <div class="floating-hearts">
+        <div class="heart" *ngFor="let heart of floatingHearts; let i = index" 
+             [style.animation-delay]="heart.delay + 's'"
+             [style.left]="heart.left + '%'">💖</div>
+      </div>
     </div>
     
-    <div class="progress-content">
-      <div class="progress-bar">
-        <div class="progress-fill" [style.width.%]="uploadProgress"></div>
+    <!-- Jumping Text -->
+    <div class="jumping-text-container">
+      <h1 class="jumping-text">
+        <span class="jump-letter" *ngFor="let letter of jumpingText; let i = index" 
+              [style.animation-delay]="(i * 0.1) + 's'">{{ letter }}</span>
+      </h1>
+      <p class="loading-subtitle">{{ currentLoadingMessage }}</p>
+    </div>
+    
+    <!-- Fun Progress Section -->
+    <div class="fun-progress-section">
+      <div class="progress-container-fun">
+        <div class="progress-bar-fun">
+          <div class="progress-fill-fun" [style.width.%]="uploadProgress">
+            <div class="progress-sparkles">
+              <span class="sparkle" *ngFor="let sparkle of sparkles; let i = index"
+                    [style.animation-delay]="(i * 0.2) + 's'">✨</span>
+            </div>
+          </div>
+        </div>
+        <div class="progress-percentage">{{ uploadProgress }}%</div>
       </div>
-      <p class="progress-text">{{ uploadProgress }}% Complete</p>
+      
+      <!-- Fun Loading Messages -->
+      <div class="loading-messages">
+        <p class="loading-message" [class.active]="currentMessageIndex === i" 
+           *ngFor="let message of loadingMessages; let i = index">
+          {{ message }}
+        </p>
+      </div>
     </div>
   </div>
 </div>

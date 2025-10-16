@@ -28,8 +28,39 @@ export class AppComponent {
   availableCameras: MediaDeviceInfo[] = [];
   currentCameraIndex = 0;
   isSwitchingCamera = false;
+  isFrontCamera = false;
+  
+  // Fun loading screen properties
+  jumpingText: string[] = [];
+  floatingHearts: { delay: number; left: number }[] = [];
+  sparkles: number[] = [];
+  loadingMessages: string[] = [
+    "Capturing the magic... ✨",
+    "Creating memories... 💕",
+    "Uploading love... 💖",
+    "Almost there... 🎉",
+    "Celebrating together... 🥳"
+  ];
+  currentMessageIndex = 0;
+  currentLoadingMessage = "Preparing your photos...";
 
-  constructor(private imagekitService: ImageKitService) {}
+  constructor(private imagekitService: ImageKitService) {
+    this.initializeFunLoading();
+  }
+
+  initializeFunLoading() {
+    // Initialize jumping text
+    this.jumpingText = "Adeline & Medwin".split('');
+    
+    // Initialize floating hearts
+    this.floatingHearts = Array.from({ length: 8 }, (_, i) => ({
+      delay: i * 0.5,
+      left: Math.random() * 100
+    }));
+    
+    // Initialize sparkles
+    this.sparkles = Array.from({ length: 5 }, (_, i) => i);
+  }
 
   onNameChange() {
     // Trim whitespace and update guest name
@@ -54,7 +85,16 @@ export class AppComponent {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       this.availableCameras = devices.filter(device => device.kind === 'videoinput');
+      
+      // Sort cameras: back camera first, then front camera
+      this.availableCameras.sort((a, b) => {
+        const aIsFront = a.label.toLowerCase().includes('front') || a.label.toLowerCase().includes('user');
+        const bIsFront = b.label.toLowerCase().includes('front') || b.label.toLowerCase().includes('user');
+        return aIsFront ? 1 : bIsFront ? -1 : 0;
+      });
+      
       console.log('Available cameras:', this.availableCameras.length);
+      console.log('Camera labels:', this.availableCameras.map(c => c.label));
     } catch (error) {
       console.error('Error detecting cameras:', error);
       this.availableCameras = [];
@@ -88,6 +128,12 @@ export class AppComponent {
     }
 
     const currentCamera = this.availableCameras[this.currentCameraIndex];
+    
+    // Detect if current camera is front camera
+    this.isFrontCamera = currentCamera ? 
+      (currentCamera.label.toLowerCase().includes('front') || 
+       currentCamera.label.toLowerCase().includes('user') ||
+       currentCamera.label.toLowerCase().includes('facing')) : false;
     
     // Try high-quality settings first
     let constraints: MediaStreamConstraints = { 
@@ -124,6 +170,13 @@ export class AppComponent {
       if (this.videoElement && this.stream) {
         this.videoElement.srcObject = this.stream;
         this.videoElement.play();
+        
+        // Apply mirroring for front camera
+        if (this.isFrontCamera) {
+          this.videoElement.style.transform = 'scaleX(-1)';
+        } else {
+          this.videoElement.style.transform = 'scaleX(1)';
+        }
       }
     }, 100);
   }
@@ -160,8 +213,21 @@ export class AppComponent {
         context.imageSmoothingEnabled = true;
         context.imageSmoothingQuality = 'high';
         
-        // Draw the current video frame to canvas
-        context.drawImage(this.videoElement, 0, 0);
+        // Handle front camera mirroring for captured photo
+        if (this.isFrontCamera) {
+          // Save current transform
+          context.save();
+          // Flip horizontally for front camera
+          context.scale(-1, 1);
+          context.translate(-this.canvasElement.width, 0);
+          // Draw the current video frame to canvas
+          context.drawImage(this.videoElement, 0, 0);
+          // Restore transform
+          context.restore();
+        } else {
+          // Draw the current video frame to canvas normally for back camera
+          context.drawImage(this.videoElement, 0, 0);
+        }
         
         // Convert canvas to data URL with maximum quality
         const photoDataUrl = this.canvasElement.toDataURL('image/jpeg', 0.95);
@@ -179,6 +245,7 @@ export class AppComponent {
     this.showCameraModal = false;
     this.currentBoxIndex = -1;
     this.isSwitchingCamera = false;
+    this.isFrontCamera = false;
     
     // Stop the camera stream
     if (this.stream) {
@@ -231,33 +298,45 @@ export class AppComponent {
     this.showConfirmModal = false;
     this.isUploading = true;
     this.uploadProgress = 0;
+    this.currentMessageIndex = 0;
+    this.currentLoadingMessage = "Preparing your photos...";
 
     try {
       const photosToUpload = this.capturedPhotos.filter(photo => photo !== '');
       
-      // Simulate progress updates
+      // Start loading message rotation
+      const messageInterval = setInterval(() => {
+        this.currentMessageIndex = (this.currentMessageIndex + 1) % this.loadingMessages.length;
+        this.currentLoadingMessage = this.loadingMessages[this.currentMessageIndex];
+      }, 1500);
+      
+      // Simulate progress updates with fun messages
       const progressInterval = setInterval(() => {
         if (this.uploadProgress < 90) {
           this.uploadProgress += 10;
         }
-      }, 200);
+      }, 300);
 
       const downloadURLs = await this.imagekitService.uploadMultiplePhotos(photosToUpload, this.guestName.trim());
       
       clearInterval(progressInterval);
+      clearInterval(messageInterval);
       this.uploadProgress = 100;
+      this.currentLoadingMessage = "Upload complete! 🎉";
       
       // Show success modal
       setTimeout(() => {
         this.isUploading = false;
         this.showSuccessModal = true;
         this.uploadProgress = 0;
-      }, 500);
+        this.currentMessageIndex = 0;
+      }, 1000);
 
     } catch (error) {
       console.error('Upload failed:', error);
       this.isUploading = false;
       this.uploadProgress = 0;
+      this.currentMessageIndex = 0;
       alert('Upload failed. Please try again.');
     }
   }
