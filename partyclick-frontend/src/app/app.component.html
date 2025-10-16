@@ -1,11 +1,21 @@
 <div class="container">
   <header class="header">
-    <h1 class="title">Partyclick</h1>
+    <h2 class="title">
+      Adeline 
+      <img src="assets/heart.png" alt="Heart" class="heart-icon">
+      Medwin 
+    </h2>
+    <h2 class="title-2">Engagement party!</h2>
+    
+    <!-- Camera Icon -->
+    <div class="camera-icon-container">
+      <img src="assets/camera.png" alt="Camera" class="camera-icon">
+    </div>
   </header>
   
   <main class="main-content">
     <p class="description">
-      Upload 4 crazy fun clicks that you take in the event
+      Shoot and Upload 4 Crazy Fun Shots from our Engagement Party!
     </p>
     
     <!-- Name Input Field -->
@@ -13,7 +23,7 @@
       <input 
         type="text" 
         class="name-input" 
-        placeholder="Enter your name" 
+        placeholder="Please Enter Your Name" 
         [(ngModel)]="guestName"
         (input)="onNameChange()"
         maxlength="50">
@@ -46,13 +56,20 @@
     
     <!-- Upload Button -->
     <div class="upload-section">
-      <button class="upload-btn" (click)="openConfirmModal()" [disabled]="!canUpload || isUploading">
-        <span *ngIf="!isUploading && canUpload">Upload {{ photoCount }} Photo{{ photoCount !== 1 ? 's' : '' }}</span>
-        <span *ngIf="!isUploading && !canUpload">Upload</span>
+      <button class="upload-btn" (click)="openConfirmModal()" [disabled]="isUploading">
+        <span *ngIf="!isUploading">Upload {{ photoCount }} Photo{{ photoCount !== 1 ? 's' : '' }}</span>
         <span *ngIf="isUploading">Uploading...</span>
       </button>
     </div>
   </main>
+</div>
+
+<!-- Toast Notification -->
+<div class="toast" *ngIf="showToast" [class.show]="showToast">
+  <div class="toast-content">
+    <span class="toast-message">{{ toastMessage }}</span>
+    <button class="toast-close" (click)="hideToast()">×</button>
+  </div>
 </div>
 
 <!-- Camera Modal -->
@@ -91,9 +108,9 @@
     </div>
     
     <div class="confirm-content">
-      <p>Would you like to submit all the photos you have taken?</p>
+      <p>Would you like to upload the photos you have taken?</p>
       <div class="photo-count">
-        {{ photoCount }} photo{{ photoCount !== 1 ? 's' : '' }} ready to upload
+        {{ photoCount }} photo{{ photoCount !== 1 ? 's' : '' }} taken
       </div>
     </div>
     
@@ -130,12 +147,12 @@
     </div>
     
     <div class="success-content">
-      <h3>Upload Successful!</h3>
-      <p>Your {{ photoCount }} photo{{ photoCount !== 1 ? 's' : '' }} have been uploaded successfully.</p>
+      <h3>Thank You For Your Masterpiece!</h3>
+      <p>Your pics are now part of our Engagement Memories 💖</p>
     </div>
     
     <div class="success-actions">
-      <button class="success-btn" (click)="closeSuccessModal()">Done</button>
+      <button class="success-btn" (click)="closeSuccessModal()">See you at The Wedding!</button>
     </div>
   </div>
 </div>

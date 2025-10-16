@@ -17,6 +17,8 @@ export class AppComponent {
   showCameraModal = false;
   showConfirmModal = false;
   showSuccessModal = false;
+  showToast = false;
+  toastMessage = '';
   currentBoxIndex = -1;
   videoElement: HTMLVideoElement | null = null;
   canvasElement: HTMLCanvasElement | null = null;
@@ -31,18 +33,49 @@ export class AppComponent {
     this.guestName = this.guestName.trim();
   }
 
+  showToastMessage(message: string) {
+    this.toastMessage = message;
+    this.showToast = true;
+    
+    // Auto-hide toast after 4 seconds
+    setTimeout(() => {
+      this.hideToast();
+    }, 4000);
+  }
+
+  hideToast() {
+    this.showToast = false;
+  }
+
   async openCamera(boxIndex: number) {
     this.currentBoxIndex = boxIndex;
     this.showCameraModal = true;
     
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ 
+      // Try high-quality settings first
+      let constraints: MediaStreamConstraints = { 
         video: { 
           facingMode: 'environment', // Use back camera on mobile
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 },
+          frameRate: { ideal: 30, min: 15 }
         } 
-      });
+      };
+
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (highQualityError) {
+        console.warn('High quality settings failed, trying fallback:', highQualityError);
+        // Fallback to lower quality if high quality fails
+        constraints = { 
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 }
+          } 
+        };
+        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+      }
       
       // Wait for the modal to be rendered
       setTimeout(() => {
@@ -65,15 +98,19 @@ export class AppComponent {
     if (this.videoElement && this.canvasElement && this.currentBoxIndex >= 0) {
       const context = this.canvasElement.getContext('2d');
       if (context) {
-        // Set canvas size to match video
+        // Set canvas size to match video dimensions for maximum quality
         this.canvasElement.width = this.videoElement.videoWidth;
         this.canvasElement.height = this.videoElement.videoHeight;
+        
+        // Enable high-quality image rendering
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
         
         // Draw the current video frame to canvas
         context.drawImage(this.videoElement, 0, 0);
         
-        // Convert canvas to data URL (base64 image)
-        const photoDataUrl = this.canvasElement.toDataURL('image/jpeg', 0.8);
+        // Convert canvas to data URL with maximum quality
+        const photoDataUrl = this.canvasElement.toDataURL('image/jpeg', 0.95);
         
         // Store the photo
         this.capturedPhotos[this.currentBoxIndex] = photoDataUrl;
@@ -110,13 +147,18 @@ export class AppComponent {
     const hasPhotos = this.capturedPhotos.some(photo => photo !== '');
     const hasName = this.guestName.trim().length > 0;
     
+    if (!hasName && !hasPhotos) {
+      this.showToastMessage('Please enter your name and take at least 1 photo to upload');
+      return;
+    }
+    
     if (!hasName) {
-      alert('Please enter your name before uploading photos.');
+      this.showToastMessage('Please enter your name to upload photos');
       return;
     }
     
     if (!hasPhotos) {
-      alert('Please take at least one photo before uploading.');
+      this.showToastMessage('Please take at least 1 photo to upload');
       return;
     }
     
@@ -166,6 +208,8 @@ export class AppComponent {
     this.showSuccessModal = false;
     // Reset photos after successful upload
     this.capturedPhotos = Array(4).fill('');
+    // Clear the guest name
+    this.guestName = '';
   }
 
   get hasPhotos() {
@@ -174,10 +218,6 @@ export class AppComponent {
 
   get hasName() {
     return this.guestName.trim().length > 0;
-  }
-
-  get canUpload() {
-    return this.hasPhotos && this.hasName;
   }
 
   get photoCount() {

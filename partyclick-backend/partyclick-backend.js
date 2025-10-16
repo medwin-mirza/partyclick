@@ -27,7 +27,7 @@ app.post("/upload", async (req, res) => {
     const result = await imagekit.upload({
       file,
       fileName,
-      folder: "/party-photos",
+      folder: "/engagement-photos",
       useUniqueFileName: true,
       tags: ["party", "guest-upload"],
     });
