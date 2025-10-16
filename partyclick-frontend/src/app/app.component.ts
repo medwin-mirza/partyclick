@@ -88,8 +88,14 @@ export class AppComponent {
       
       // Sort cameras: back camera first, then front camera
       this.availableCameras.sort((a, b) => {
-        const aIsFront = a.label.toLowerCase().includes('front') || a.label.toLowerCase().includes('user');
-        const bIsFront = b.label.toLowerCase().includes('front') || b.label.toLowerCase().includes('user');
+        const aIsFront = a.label.toLowerCase().includes('front') || 
+                        a.label.toLowerCase().includes('user') ||
+                        a.label.toLowerCase().includes('selfie') ||
+                        a.label.toLowerCase().includes('facing');
+        const bIsFront = b.label.toLowerCase().includes('front') || 
+                        b.label.toLowerCase().includes('user') ||
+                        b.label.toLowerCase().includes('selfie') ||
+                        b.label.toLowerCase().includes('facing');
         return aIsFront ? 1 : bIsFront ? -1 : 0;
       });
       
@@ -129,11 +135,25 @@ export class AppComponent {
 
     const currentCamera = this.availableCameras[this.currentCameraIndex];
     
-    // Detect if current camera is front camera
-    this.isFrontCamera = currentCamera ? 
-      (currentCamera.label.toLowerCase().includes('front') || 
-       currentCamera.label.toLowerCase().includes('user') ||
-       currentCamera.label.toLowerCase().includes('facing')) : false;
+    // Detect if current camera is front camera (more robust detection)
+    this.isFrontCamera = false;
+    if (currentCamera) {
+      const label = currentCamera.label.toLowerCase();
+      const isFront = label.includes('front') || 
+                     label.includes('user') ||
+                     label.includes('selfie') ||
+                     label.includes('facing');
+      const isBack = label.includes('back') || 
+                    label.includes('rear') ||
+                    label.includes('environment') ||
+                    label.includes('world');
+      
+      // Only flip if it's clearly a front camera and not a back camera
+      this.isFrontCamera = isFront && !isBack;
+      
+      console.log(`Camera: ${currentCamera.label}`);
+      console.log(`Is Front: ${isFront}, Is Back: ${isBack}, Will Flip: ${this.isFrontCamera}`);
+    }
     
     // Try high-quality settings first
     let constraints: MediaStreamConstraints = { 
