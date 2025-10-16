@@ -5,6 +5,8 @@
   "main": "partyclick-backend.js",
   "type": "module",
   "scripts": {
+    "start": "node partyclick-backend.js",
+    "dev": "node partyclick-backend.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
