@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
   providedIn: 'root'
 })
 export class ImageKitService {
-  private backendUrl = 'http://localhost:3000/upload'; // Your backend URL
+  private backendUrl = 'https://partyclick-backend.onrender.com/upload'; // Your backend URL
 
   constructor(private http: HttpClient) {}
 
