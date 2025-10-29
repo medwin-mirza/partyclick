@@ -2,6 +2,14 @@
 
 A mobile-friendly Angular frontend with Node.js backend for uploading party photos to ImageKit.io.
 
+## 📸 Screenshots
+
+![Partyclick Screenshot 1](images/partyclick%20-%201.png)
+
+![Partyclick Screenshot 2](images/partyclick%20-%202.png)
+
+![Partyclick Screenshot 3](images/partyclick%20-%203.png)
+
 ## 🎯 Features
 
 - **Mobile-Optimized**: Responsive design for mobile devices

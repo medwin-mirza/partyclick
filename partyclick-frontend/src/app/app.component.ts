@@ -155,31 +155,65 @@ export class AppComponent {
       console.log(`Is Front: ${isFront}, Is Back: ${isBack}, Will Flip: ${this.isFrontCamera}`);
     }
     
-    // Try high-quality settings first
-    let constraints: MediaStreamConstraints = { 
-      video: { 
-        deviceId: currentCamera ? { exact: currentCamera.deviceId } : undefined,
-        facingMode: !currentCamera ? 'environment' : undefined, // Use back camera on mobile if no specific device
-        width: { ideal: 1920, min: 1280 },
-        height: { ideal: 1080, min: 720 },
-        frameRate: { ideal: 30, min: 15 }
-      } 
-    };
+    // Build base video constraints without conflicting properties
+    const baseVideoConstraints: any = {};
+    
+    // Only set deviceId if we have a camera selected
+    if (currentCamera && currentCamera.deviceId) {
+      // Use 'ideal' instead of 'exact' to avoid OverconstrainedError
+      baseVideoConstraints.deviceId = { ideal: currentCamera.deviceId };
+    } else {
+      // Fallback to facingMode if no device selected
+      baseVideoConstraints.facingMode = { ideal: 'environment' };
+    }
+    
+    // Progressive constraint attempts - from highest to lowest quality
+    const constraintAttempts = [
+      // High quality
+      { 
+        ...baseVideoConstraints,
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 30 }
+      },
+      // Medium-high quality
+      { 
+        ...baseVideoConstraints,
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30 }
+      },
+      // Medium quality
+      { 
+        ...baseVideoConstraints,
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      // Low quality - basic constraints only
+      { 
+        ...baseVideoConstraints
+      }
+    ];
 
-    try {
-      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-    } catch (highQualityError) {
-      console.warn('High quality settings failed, trying fallback:', highQualityError);
-      // Fallback to lower quality if high quality fails
-      constraints = { 
-        video: { 
-          deviceId: currentCamera ? { exact: currentCamera.deviceId } : undefined,
-          facingMode: !currentCamera ? 'environment' : undefined,
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 }
-        } 
-      };
-      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+    let lastError: any = null;
+    
+    for (const videoConstraints of constraintAttempts) {
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia({ 
+          video: videoConstraints 
+        });
+        console.log('Camera started successfully with constraints:', videoConstraints);
+        break; // Success! Exit the loop
+      } catch (error: any) {
+        lastError = error;
+        console.warn('Constraint attempt failed:', videoConstraints, error);
+        // Continue to next attempt
+      }
+    }
+    
+    // If all attempts failed, throw the last error
+    if (!this.stream) {
+      throw lastError || new Error('Failed to access camera');
     }
     
     // Wait for the modal to be rendered
