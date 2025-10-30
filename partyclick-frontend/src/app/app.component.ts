@@ -83,24 +83,46 @@ export class AppComponent {
 
   async detectAvailableCameras() {
     try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      this.availableCameras = devices.filter(device => device.kind === 'videoinput');
+      // On some devices, we need permission first before labels are available
+      // So we'll enumerate twice - once before (might have empty labels) and after permission
+      let devices = await navigator.mediaDevices.enumerateDevices();
+      let cameras = devices.filter(device => device.kind === 'videoinput');
+      
+      // If we have cameras but no labels, try to get permission first
+      if (cameras.length > 0 && cameras.some(c => !c.label || c.label === '')) {
+        try {
+          // Request a temporary stream to get permission (will be stopped immediately)
+          const tempStream = await this.getUserMedia({ video: true });
+          tempStream.getTracks().forEach(track => track.stop());
+          
+          // Now enumerate again - labels should be available
+          devices = await navigator.mediaDevices.enumerateDevices();
+          cameras = devices.filter(device => device.kind === 'videoinput');
+        } catch (permError) {
+          // Permission denied or other error - continue with what we have
+          console.warn('Could not get camera permission for device enumeration:', permError);
+        }
+      }
+      
+      this.availableCameras = cameras;
       
       // Sort cameras: back camera first, then front camera
       this.availableCameras.sort((a, b) => {
-        const aIsFront = a.label.toLowerCase().includes('front') || 
-                        a.label.toLowerCase().includes('user') ||
-                        a.label.toLowerCase().includes('selfie') ||
-                        a.label.toLowerCase().includes('facing');
-        const bIsFront = b.label.toLowerCase().includes('front') || 
-                        b.label.toLowerCase().includes('user') ||
-                        b.label.toLowerCase().includes('selfie') ||
-                        b.label.toLowerCase().includes('facing');
+        const aLabel = (a.label || '').toLowerCase();
+        const bLabel = (b.label || '').toLowerCase();
+        const aIsFront = aLabel.includes('front') || 
+                        aLabel.includes('user') ||
+                        aLabel.includes('selfie') ||
+                        aLabel.includes('facing');
+        const bIsFront = bLabel.includes('front') || 
+                        bLabel.includes('user') ||
+                        bLabel.includes('selfie') ||
+                        bLabel.includes('facing');
         return aIsFront ? 1 : bIsFront ? -1 : 0;
       });
       
       console.log('Available cameras:', this.availableCameras.length);
-      console.log('Camera labels:', this.availableCameras.map(c => c.label));
+      console.log('Camera labels:', this.availableCameras.map(c => c.label || 'Unnamed'));
     } catch (error) {
       console.error('Error detecting cameras:', error);
       this.availableCameras = [];
@@ -111,18 +133,111 @@ export class AppComponent {
     return this.availableCameras.length > 1;
   }
 
+  /**
+   * Check if the browser supports camera access
+   */
+  isCameraSupported(): boolean {
+    // Check for getUserMedia support
+    const hasGetUserMedia = !!(
+      navigator.mediaDevices?.getUserMedia ||
+      (navigator as any).getUserMedia ||
+      (navigator as any).webkitGetUserMedia ||
+      (navigator as any).mozGetUserMedia
+    );
+    
+    if (!hasGetUserMedia) {
+      return false;
+    }
+    
+    // Check if we're on HTTPS or localhost (required for getUserMedia)
+    const isSecureContext = window.isSecureContext || 
+                           location.protocol === 'https:' || 
+                           location.hostname === 'localhost' || 
+                           location.hostname === '127.0.0.1';
+    
+    return isSecureContext;
+  }
+
+  /**
+   * Get user-friendly browser compatibility message
+   */
+  getBrowserCompatibilityMessage(): string {
+    const hasGetUserMedia = !!(
+      navigator.mediaDevices?.getUserMedia ||
+      (navigator as any).getUserMedia ||
+      (navigator as any).webkitGetUserMedia ||
+      (navigator as any).mozGetUserMedia
+    );
+    
+    if (!hasGetUserMedia) {
+      return 'Your browser does not support camera access. Please use a modern browser like Chrome, Firefox, Safari, or Edge.';
+    }
+    
+    const isSecureContext = window.isSecureContext || 
+                           location.protocol === 'https:' || 
+                           location.hostname === 'localhost' || 
+                           location.hostname === '127.0.0.1';
+    
+    if (!isSecureContext) {
+      return 'Camera access requires a secure connection (HTTPS). Please access this app over HTTPS.';
+    }
+    
+    return '';
+  }
+
+  /**
+   * Get getUserMedia with legacy browser support
+   */
+  private async getUserMedia(constraints: MediaStreamConstraints): Promise<MediaStream> {
+    // Modern API (preferred)
+    if (navigator.mediaDevices?.getUserMedia) {
+      return navigator.mediaDevices.getUserMedia(constraints);
+    }
+    
+    // Legacy APIs (for older browsers)
+    const legacyGetUserMedia = 
+      (navigator as any).getUserMedia ||
+      (navigator as any).webkitGetUserMedia ||
+      (navigator as any).mozGetUserMedia ||
+      (navigator as any).msGetUserMedia;
+    
+    if (legacyGetUserMedia) {
+      return new Promise((resolve, reject) => {
+        legacyGetUserMedia.call(
+          navigator,
+          constraints,
+          resolve,
+          reject
+        );
+      });
+    }
+    
+    throw new Error('getUserMedia is not supported in this browser');
+  }
+
   async openCamera(boxIndex: number) {
     this.currentBoxIndex = boxIndex;
     this.showCameraModal = true;
+    
+    // Check browser compatibility first
+    if (!this.isCameraSupported()) {
+      const compatibilityMessage = this.getBrowserCompatibilityMessage();
+      this.showToastMessage(compatibilityMessage);
+      this.closeCamera();
+      return;
+    }
     
     // Detect available cameras first
     await this.detectAvailableCameras();
     
     try {
       await this.startCamera();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accessing camera:', error);
-      alert('Unable to access camera. Please check permissions.');
+      
+      // Use the enhanced error message if available, otherwise fallback
+      const errorMessage = error?.message || 'Unable to access camera. Please check permissions.';
+      this.showToastMessage(errorMessage);
       this.closeCamera();
     }
   }
@@ -155,65 +270,88 @@ export class AppComponent {
       console.log(`Is Front: ${isFront}, Is Back: ${isBack}, Will Flip: ${this.isFrontCamera}`);
     }
     
-    // Build base video constraints without conflicting properties
-    const baseVideoConstraints: any = {};
+    // Build progressive constraint attempts with multiple strategies
+    const constraintAttempts: any[] = [];
     
-    // Only set deviceId if we have a camera selected
+    // Strategy 1: Try with deviceId (if available) with quality constraints
     if (currentCamera && currentCamera.deviceId) {
-      // Use 'ideal' instead of 'exact' to avoid OverconstrainedError
-      baseVideoConstraints.deviceId = { ideal: currentCamera.deviceId };
-    } else {
-      // Fallback to facingMode if no device selected
-      baseVideoConstraints.facingMode = { ideal: 'environment' };
+      constraintAttempts.push(
+        { deviceId: { ideal: currentCamera.deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        { deviceId: { ideal: currentCamera.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        { deviceId: { ideal: currentCamera.deviceId }, width: { ideal: 640 }, height: { ideal: 480 } },
+        { deviceId: { ideal: currentCamera.deviceId } }
+      );
     }
     
-    // Progressive constraint attempts - from highest to lowest quality
-    const constraintAttempts = [
-      // High quality
-      { 
-        ...baseVideoConstraints,
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-        frameRate: { ideal: 30 }
-      },
-      // Medium-high quality
-      { 
-        ...baseVideoConstraints,
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30 }
-      },
-      // Medium quality
-      { 
-        ...baseVideoConstraints,
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      },
-      // Low quality - basic constraints only
-      { 
-        ...baseVideoConstraints
-      }
-    ];
+    // Strategy 2: Try with facingMode (for mobile devices)
+    constraintAttempts.push(
+      { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      { facingMode: { ideal: 'environment' } },
+      { facingMode: 'environment' }
+    );
+    
+    // Strategy 3: Try with user-facing camera (front camera)
+    constraintAttempts.push(
+      { facingMode: { ideal: 'user' } },
+      { facingMode: 'user' }
+    );
+    
+    // Strategy 4: Most basic - just request video (most compatible)
+    constraintAttempts.push(true);
 
     let lastError: any = null;
     
     for (const videoConstraints of constraintAttempts) {
       try {
-        this.stream = await navigator.mediaDevices.getUserMedia({ 
+        this.stream = await this.getUserMedia({ 
           video: videoConstraints 
         });
         console.log('Camera started successfully with constraints:', videoConstraints);
+        
+        // If we used a basic fallback, try to detect which camera we got
+        if (videoConstraints === true && this.stream) {
+          const tracks = this.stream.getVideoTracks();
+          if (tracks.length > 0) {
+            const settings = tracks[0].getSettings();
+            // Update currentCameraIndex if we can identify the camera
+            if (settings.deviceId) {
+              const foundIndex = this.availableCameras.findIndex(c => c.deviceId === settings.deviceId);
+              if (foundIndex >= 0) {
+                this.currentCameraIndex = foundIndex;
+                const detectedCamera = this.availableCameras[foundIndex];
+                const label = detectedCamera.label.toLowerCase();
+                this.isFrontCamera = (label.includes('front') || 
+                                     label.includes('user') ||
+                                     label.includes('selfie')) &&
+                                    !(label.includes('back') || label.includes('rear'));
+              }
+            }
+          }
+        }
+        
         break; // Success! Exit the loop
       } catch (error: any) {
         lastError = error;
-        console.warn('Constraint attempt failed:', videoConstraints, error);
+        console.warn('Constraint attempt failed:', videoConstraints, error.name, error.message);
         // Continue to next attempt
       }
     }
     
-    // If all attempts failed, throw the last error
+    // If all attempts failed, throw the last error with better context
     if (!this.stream) {
-      throw lastError || new Error('Failed to access camera');
+      const errorMessage = lastError?.name === 'NotAllowedError' 
+        ? 'Camera permission denied. Please allow camera access in your browser settings.'
+        : lastError?.name === 'NotFoundError'
+        ? 'No camera found on this device.'
+        : lastError?.name === 'NotReadableError' || lastError?.name === 'TrackStartError'
+        ? 'Camera is already in use by another application.'
+        : lastError?.name === 'OverconstrainedError'
+        ? 'Camera does not support the required settings. Please try a different device.'
+        : 'Unable to access camera. Please check your browser permissions and try again.';
+      
+      const enhancedError = new Error(errorMessage);
+      (enhancedError as any).originalError = lastError;
+      throw enhancedError;
     }
     
     // Wait for the modal to be rendered
